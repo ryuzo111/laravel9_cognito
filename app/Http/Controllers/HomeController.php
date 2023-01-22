@@ -26,6 +26,8 @@ class HomeController extends Controller
     public function index()
     {
         Log::debug(Auth::user());
+        $data = session()->all();
+        Log::debug($data);
         return view('home');
     }
 }

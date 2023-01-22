@@ -7,7 +7,6 @@ use App\Providers\RouteServiceProvider;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 
 //追加
-use Illuminate\Http\Request;
 use Ellaisys\Cognito\Auth\AuthenticatesUsers as CognitoAuthenticatesUsers;
 
 class LoginController extends Controller
@@ -47,42 +46,36 @@ class LoginController extends Controller
         return view("auth.login");
     }
 
-    // AuthenticatesUsers.phpのloginメソッドを参考に書き換える
-    public function login(Request $request)
-    {
-        $this->validateLogin($request);
+        /**
+         * Authenticate User
+         * 
+         * @throws \HttpException
+         * 
+         * @return mixed
+         */
+        public function login(\Illuminate\Http\Request $request)
+        {
 
-        if (method_exists($this, 'hasTooManyLoginAttempts') &&
-            $this->hasTooManyLoginAttempts($request)) {
-            $this->fireLockoutEvent($request);
+            //Convert request to collection
+            $collection = collect($request->all());
 
-            return $this->sendLockoutResponse($request);
-        }
+            //Authenticate with Cognito Package Trait (with 'web' as the auth guard)
+            if ($response = $this->attemptLogin($collection, 'web')) {
+                if ($response===true) {
+                    return redirect(route('home'))->with('success', true);
+                } else if ($response===false) {
+                    // If the login attempt was unsuccessful you may increment the number of attempts
+                    // to login and redirect the user back to the login form. Of course, when this
+                    // user surpasses their maximum number of attempts they will get locked out.
+                    //
+                    //$this->incrementLoginAttempts($request);
+                    //
+                    //$this->sendFailedLoginResponse($collection, null);
+                } else {
+                    return $response;
+                } //End if
+            } //End if
 
-        $collection = collect($request->all());
-        if ($this->attemptLogin($collection)) {
-            if ($request->hasSession()) {
-                $request->session()->put('auth.password_confirmed_at', time());
-            }
+        } //Function ends
 
-            return redirect()->route('home');
-            // return $this->sendLoginResponse($request);
-        }
-    }
-
-    /**
-     * Validate the user login request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return void
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
-    protected function validateLogin(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|string',
-            'password' => 'required|string',
-        ]);
-    }
 }
