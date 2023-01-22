@@ -5,23 +5,10 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
+
 //追加
-use Auth;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Log;
-
-use Ellaisys\Cognito\AwsCognitoClient;
-
-use Exception;
-use Illuminate\Validation\ValidationException;
-use Ellaisys\Cognito\Exceptions\AwsCognitoException;
-use Ellaisys\Cognito\Exceptions\NoLocalUserException;
-use Symfony\Component\HttpKernel\Exception\HttpException;
-use Aws\CognitoIdentityProvider\Exception\CognitoIdentityProviderException;
-
-
+use Ellaisys\Cognito\Auth\AuthenticatesUsers as CognitoAuthenticatesUsers;
 
 class LoginController extends Controller
 {
@@ -36,7 +23,8 @@ class LoginController extends Controller
     |
     */
 
-    use AuthenticatesUsers;
+    // use AuthenticatesUsers;
+    use CognitoAuthenticatesUsers;
 
     /**
      * Where to redirect users after login.
@@ -55,15 +43,15 @@ class LoginController extends Controller
         $this->middleware('guest')->except('logout');
     }
 
+    public function showLoginForm() {
+        return view("auth.login");
+    }
 
-    //TODO オーバーライドして書き換える
+    // AuthenticatesUsers.phpのloginメソッドを参考に書き換える
     public function login(Request $request)
     {
         $this->validateLogin($request);
 
-        // If the class is using the ThrottlesLogins trait, we can automatically throttle
-        // the login attempts for this application. We'll key this by the username and
-        // the IP address of the client making these requests into this application.
         if (method_exists($this, 'hasTooManyLoginAttempts') &&
             $this->hasTooManyLoginAttempts($request)) {
             $this->fireLockoutEvent($request);
@@ -71,54 +59,30 @@ class LoginController extends Controller
             return $this->sendLockoutResponse($request);
         }
 
-        if ($this->attemptLogin($request)) {
+        $collection = collect($request->all());
+        if ($this->attemptLogin($collection)) {
             if ($request->hasSession()) {
                 $request->session()->put('auth.password_confirmed_at', time());
             }
 
-            return $this->sendLoginResponse($request);
+            return redirect()->route('home');
+            // return $this->sendLoginResponse($request);
         }
     }
 
-    //TODO attemptLoginとlogin失敗時の更新をする
-
-    protected function attemptLogin(Collection $request, string $guard='web', string $paramUsername='email', string $paramPassword='password', bool $isJsonResponse=false)
+    /**
+     * Validate the user login request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return void
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    protected function validateLogin(Request $request)
     {
-        try {
-            //Get key fields
-            $keyUsername = 'email';
-            $keyPassword = 'password';
-            $rememberMe = $request->has('remember')?$request['remember']:false;
-
-            //Generate credentials array
-            $credentials = [
-                $keyUsername => $request[$paramUsername],
-                $keyPassword => $request[$paramPassword]
-            ];
-
-            //Authenticate User
-            $claim = Auth::guard($guard)->attempt($credentials, $rememberMe);
-
-        } catch (NoLocalUserException $e) {
-            Log::error('AuthenticatesUsers:attemptLogin:NoLocalUserException');
-
-            if (config('cognito.add_missing_local_user_sso')) {
-                $response = $this->createLocalUser($credentials, $keyPassword);
-
-                if ($response) {
-                    return $response;
-                } //End if
-            } //End if
-
-            return $this->sendFailedLoginResponse($request, $e, $isJsonResponse, $paramUsername);
-        } catch (CognitoIdentityProviderException $e) {
-            Log::error('AuthenticatesUsers:attemptLogin:CognitoIdentityProviderException');
-            return $this->sendFailedCognitoResponse($e, $isJsonResponse, $paramUsername);
-        } catch (Exception $e) {
-            Log::error('AuthenticatesUsers:attemptLogin:Exception');
-            return $this->sendFailedLoginResponse($request, $e, $isJsonResponse, $paramUsername);
-        } //Try-catch ends
-
-        return $claim;
-    } 
+        $request->validate([
+            'email' => 'required|string',
+            'password' => 'required|string',
+        ]);
+    }
 }

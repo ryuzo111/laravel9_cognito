@@ -4,10 +4,6 @@ namespace App\Providers;
 
 // use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
-use App\Services\Auth\CognitoGuard;
-use App\Services\Cognito\JWTVerifier;
-use Illuminate\Support\Facades\Auth;
-
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -28,15 +24,5 @@ class AuthServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->registerPolicies();
-
-        Auth::extend('cognito', function($app, $name, array $config) {
-            return new CognitoGuard(
-                new JWTVerifier(),
-                $app['request'],
-                Auth::createUserProvider($config['provider'])
-            );
-        });
-
-        //
     }
 }

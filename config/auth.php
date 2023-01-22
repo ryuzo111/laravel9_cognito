@@ -37,7 +37,7 @@ return [
 
     'guards' => [
         'web' => [
-            'driver' => 'session',
+            'driver' => 'cognito-session',
             'provider' => 'users',
         ],
     ],
@@ -65,11 +65,11 @@ return [
             'model' => App\Models\User::class,
         ],
 
-        'api' => [
-            'driver' => 'cognito',  // 変える
-            'provider' => 'users',
-            'hash' => false,
-        ],
+        // 'api' => [
+        //     'driver' => 'cognito',  // 変える
+        //     'provider' => 'users',
+        //     'hash' => false,
+        // ],
         // 'users' => [
         //     'driver' => 'database',
         //     'table' => 'users',
